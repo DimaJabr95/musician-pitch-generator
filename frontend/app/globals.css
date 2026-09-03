@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #12161f;
+  --ink-soft: #1a2030;
+  --ink-card: #1f2635;
+  --paper: #ede7da;
+  --paper-dim: #b9b2a1;
+  --brass: #c98a3e;
+  --brass-soft: #e2b273;
+  --brass-dim: rgba(201, 138, 62, 0.16);
+  --rule: rgba(237, 231, 218, 0.14);
+
+  /* System stacks, not web fonts — renders identically everywhere with
+     no network dependency (no risk of a fallback swap mid-recording). */
+  --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: -apple-system, "Segoe UI", ui-sans-serif, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.results-enter {
+  animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
