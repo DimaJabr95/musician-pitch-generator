@@ -101,3 +101,57 @@ test("copy button copies the draft and shows 'Copied'", async () => {
     "Subject: Dubai violinist blends classical and maqam",
   );
 });
+
+const MOCK_OUTLETS = [
+  {
+    name: "Emirates Arts Digest",
+    type: "Arts and culture publication",
+    region: "UAE",
+    beat: "Galleries, exhibition openings, art fairs and cultural institutions in the UAE.",
+    score: 0.642,
+  },
+  {
+    name: "The Maqam Ledger",
+    type: "Music criticism site",
+    region: "Middle East",
+    beat: "Arabic and world music, with a focus on artists blending traditional maqam.",
+    score: 0.627,
+  },
+];
+
+test("shows the best-fit outlets and marks the one the draft is written for", async () => {
+  mockFetchOnce({
+    ok: true,
+    json: async () => ({ ...MOCK_RESULT, outlets: MOCK_OUTLETS }),
+  });
+  const user = userEvent.setup();
+  render(<Home />);
+
+  await user.type(screen.getByRole("textbox"), LONG_BIO);
+  await user.click(screen.getByRole("button", { name: /find the angles/i }));
+
+  expect(
+    await screen.findByRole("heading", { name: /best-fit outlets/i }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Emirates Arts Digest")).toBeInTheDocument();
+  expect(screen.getByText("The Maqam Ledger")).toBeInTheDocument();
+  // only the first (top match) is marked as the one the draft targets
+  expect(screen.getAllByText(/draft written for this outlet/i)).toHaveLength(1);
+});
+
+test("hides the outlets section when the API returns no outlets", async () => {
+  mockFetchOnce({
+    ok: true,
+    json: async () => ({ ...MOCK_RESULT, outlets: [] }),
+  });
+  const user = userEvent.setup();
+  render(<Home />);
+
+  await user.type(screen.getByRole("textbox"), LONG_BIO);
+  await user.click(screen.getByRole("button", { name: /find the angles/i }));
+
+  expect(await screen.findByText(MOCK_RESULT.angles[0])).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: /best-fit outlets/i }),
+  ).not.toBeInTheDocument();
+});
