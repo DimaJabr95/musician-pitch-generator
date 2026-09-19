@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 330" role="img" aria-labelledby="t d">
+  <title id="t">Architecture of Find the story</title>
+  <desc id="d">A browser talks to a Next.js frontend, which calls a FastAPI backend, which calls the Gemini API.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#c9a85c"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="330" rx="14" fill="#1b1815"/>
+
+  <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <!-- Boxes -->
+    <g>
+      <rect x="35"  y="70" width="160" height="96" rx="10" fill="#26221d" stroke="#4a4237"/>
+      <rect x="265" y="70" width="160" height="96" rx="10" fill="#26221d" stroke="#c9a85c"/>
+      <rect x="495" y="70" width="160" height="96" rx="10" fill="#26221d" stroke="#c9a85c"/>
+      <rect x="725" y="70" width="160" height="96" rx="10" fill="#26221d" stroke="#4a4237"/>
+    </g>
+
+    <!-- Box text -->
+    <g text-anchor="middle">
+      <text x="115" y="112" font-size="18" font-weight="600" fill="#efe8dc">Browser</text>
+      <text x="115" y="138" font-size="13" fill="#a99f8e">the user</text>
+
+      <text x="345" y="112" font-size="18" font-weight="600" fill="#efe8dc">Frontend</text>
+      <text x="345" y="138" font-size="13" fill="#a99f8e">Next.js · TypeScript</text>
+
+      <text x="575" y="112" font-size="18" font-weight="600" fill="#efe8dc">Backend</text>
+      <text x="575" y="138" font-size="13" fill="#a99f8e">FastAPI · Python</text>
+
+      <text x="805" y="112" font-size="18" font-weight="600" fill="#efe8dc">Gemini API</text>
+      <text x="805" y="138" font-size="13" fill="#a99f8e">Google AI Studio</text>
+    </g>
+
+    <!-- Ports -->
+    <g text-anchor="middle" font-size="12" fill="#c9a85c" font-family="ui-monospace, Menlo, Consolas, monospace">
+      <text x="345" y="58">:3000</text>
+      <text x="575" y="58">:8000</text>
+    </g>
+
+    <!-- Arrows -->
+    <g stroke="#c9a85c" stroke-width="1.75" fill="none" marker-end="url(#arrow)">
+      <line x1="197" y1="118" x2="261" y2="118"/>
+      <line x1="427" y1="118" x2="491" y2="118"/>
+      <line x1="657" y1="118" x2="721" y2="118"/>
+    </g>
+
+    <!-- Step badges -->
+    <g text-anchor="middle" font-size="12" font-weight="700" fill="#1b1815">
+      <circle cx="229" cy="96" r="11" fill="#c9a85c"/><text x="229" y="100">1</text>
+      <circle cx="459" cy="96" r="11" fill="#c9a85c"/><text x="459" y="100">2</text>
+      <circle cx="689" cy="96" r="11" fill="#c9a85c"/><text x="689" y="100">3</text>
+    </g>
+
+    <!-- Legend -->
+    <g font-size="14" fill="#d9d0c1">
+      <text x="35" y="216"><tspan font-weight="700" fill="#c9a85c">1</tspan>  User pastes a bio (20 to 4000 characters) and clicks Find the angles</text>
+      <text x="35" y="243"><tspan font-weight="700" fill="#c9a85c">2</tspan>  Frontend sends it to <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#efe8dc">POST /generate-pitch</tspan></text>
+      <text x="35" y="270"><tspan font-weight="700" fill="#c9a85c">3</tspan>  Backend asks Gemini for 2-3 angles and one draft email, and validates the JSON it gets back</text>
+      <text x="35" y="297" fill="#a99f8e">The angles and draft travel back the same way and appear in the browser.</text>
+    </g>
+  </g>
+</svg>
