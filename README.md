@@ -19,12 +19,7 @@ release, or performance update, in this repo's example.
 
 ## How it works
 
-```mermaid
-flowchart LR
-  U[Browser] --> F[Next.js frontend :3000]
-  F -->|POST /generate-pitch| B[FastAPI backend :8000]
-  B -->|generate_content| G[Gemini API]
-```
+![Architecture: browser, Next.js frontend, FastAPI backend, Gemini API](docs/architecture.svg)
 
 1. You paste a bio (20 to 4000 characters) into the frontend.
 2. The frontend sends it to `POST /generate-pitch` on the backend.
