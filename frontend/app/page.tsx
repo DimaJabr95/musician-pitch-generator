@@ -7,9 +7,18 @@ type EmailDraft = {
   body: string;
 };
 
+type OutletMatch = {
+  name: string;
+  type: string;
+  region: string;
+  beat: string;
+  score: number;
+};
+
 type PitchResult = {
   angles: string[];
   email_draft: EmailDraft;
+  outlets?: OutletMatch[];
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -176,6 +185,53 @@ export default function Home() {
               ))}
             </div>
           </div>
+
+          {result.outlets && result.outlets.length > 0 && (
+            <div>
+              <h2
+                className="mb-4 text-lg"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Best-fit outlets
+              </h2>
+              <div className="flex flex-col gap-3">
+                {result.outlets.map((outlet, i) => (
+                  <div
+                    key={outlet.name}
+                    className="rounded-sm border px-5 py-4"
+                    style={{
+                      borderColor: i === 0 ? "var(--brass)" : "var(--rule)",
+                      background: "var(--ink-card)",
+                    }}
+                  >
+                    <div className="flex items-baseline justify-between gap-4">
+                      <p className="text-[15px] font-medium">{outlet.name}</p>
+                      {i === 0 && (
+                        <span
+                          className="shrink-0 text-xs"
+                          style={{ color: "var(--brass-soft)" }}
+                        >
+                          Draft written for this outlet
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      className="mt-1 text-sm"
+                      style={{ color: "var(--paper-dim)" }}
+                    >
+                      {outlet.type} · {outlet.region}
+                    </p>
+                    <p
+                      className="mt-2 text-sm leading-relaxed"
+                      style={{ color: "var(--paper-dim)" }}
+                    >
+                      {outlet.beat}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <h2
