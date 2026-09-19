@@ -14,7 +14,7 @@ See [`SPEC.md`](./SPEC.md) for the one-page spec this was built from.
 
 ## Why music
 
-Real Pathos use case, scoped to a domain I actually know: a violinist's bio,
+I'm a violinist and a web developer, scoped to a domain I actually know: a violinist's bio,
 release, or performance update, in this repo's example.
 
 ## How it works
