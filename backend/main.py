@@ -24,10 +24,17 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="Musician Pitch-Angle Generator")
 
-# Allow the local Next.js dev server to call this API during development.
+# Allowed browser origins. Defaults to the local Next.js dev server; set
+# CORS_ORIGINS (comma-separated) when deploying the frontend somewhere else.
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["POST"],
     allow_headers=["*"],
 )
