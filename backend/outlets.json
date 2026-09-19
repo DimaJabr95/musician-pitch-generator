@@ -1,0 +1,110 @@
+[
+  {
+    "id": "maqam-ledger",
+    "name": "The Maqam Ledger",
+    "type": "Music criticism site",
+    "region": "Middle East",
+    "beat": "Arabic and world music, with a focus on artists blending traditional maqam with contemporary and classical styles.",
+    "audience": "Listeners and musicians interested in Arabic music traditions and fusion.",
+    "likes": "Fusion projects, traditional training meeting new forms, artists who can explain their musical choices."
+  },
+  {
+    "id": "gulf-stage-weekly",
+    "name": "Gulf Stage Weekly",
+    "type": "Live music and events guide",
+    "region": "Gulf",
+    "beat": "Concerts, festivals, venue openings and live performances across the Gulf.",
+    "audience": "Concert-goers and event planners in the UAE, Saudi Arabia, Qatar and neighbouring countries.",
+    "likes": "Upcoming shows with dates and venues, first-of-their-kind performances, visiting and resident artists."
+  },
+  {
+    "id": "diaspora-voices",
+    "name": "Diaspora Voices",
+    "type": "Long-form features magazine",
+    "region": "Global",
+    "beat": "Personal stories of people who moved countries and how migration shapes their identity, work and culture.",
+    "audience": "Readers interested in migration, belonging and cultural identity.",
+    "likes": "Strong personal narratives, before-and-after stories, artists building careers far from home."
+  },
+  {
+    "id": "second-act",
+    "name": "Second Act Magazine",
+    "type": "Career and lifestyle magazine",
+    "region": "Global",
+    "beat": "People who changed careers to follow a creative passion, and what it took.",
+    "audience": "Professionals considering a career change and people curious about unconventional paths.",
+    "likes": "Career pivots with concrete turning points, practical lessons, honest accounts of risk."
+  },
+  {
+    "id": "strings-and-bows",
+    "name": "Strings & Bows Quarterly",
+    "type": "Classical music magazine",
+    "region": "Global",
+    "beat": "Classical and orchestral music, string instruments, conservatory training and technique.",
+    "audience": "Classical musicians, students and serious listeners.",
+    "likes": "Conservatory-trained performers, technique and repertoire discussions, new takes on the classical tradition."
+  },
+  {
+    "id": "wedding-circuit",
+    "name": "The Wedding Circuit",
+    "type": "Wedding and private events trade publication",
+    "region": "Gulf",
+    "beat": "The wedding and private events industry: entertainment vendors, trends and planning.",
+    "audience": "Wedding planners, venues and couples hiring live entertainment.",
+    "likes": "Live music for weddings and private events, trends in entertainment, vendor spotlights."
+  },
+  {
+    "id": "emirates-arts-digest",
+    "name": "Emirates Arts Digest",
+    "type": "Arts and culture publication",
+    "region": "UAE",
+    "beat": "Galleries, exhibition openings, art fairs and cultural institutions in the UAE.",
+    "audience": "Art lovers, gallery-goers and cultural professionals.",
+    "likes": "Performances tied to gallery and exhibition events, collaborations between music and visual art."
+  },
+  {
+    "id": "cross-genre-radio",
+    "name": "Cross-Genre Radio",
+    "type": "Interview podcast",
+    "region": "Global",
+    "beat": "Conversations with musicians who blend genres and traditions.",
+    "audience": "Curious listeners who enjoy hearing how artists think about their craft.",
+    "likes": "Guests with a clear story about mixing traditions, collaborations across cultures, strong anecdotes."
+  },
+  {
+    "id": "women-in-sound",
+    "name": "Women in Sound",
+    "type": "Music industry publication",
+    "region": "Global",
+    "beat": "Women musicians, producers and engineers, and representation in the music industry.",
+    "audience": "Industry professionals and aspiring women in music.",
+    "likes": "Profiles of women building music careers, industry barriers and how they were overcome."
+  },
+  {
+    "id": "tech-and-tempo",
+    "name": "Tech & Tempo",
+    "type": "Music technology blog",
+    "region": "Global",
+    "beat": "Where technology meets music: AI tools, software, production and new instruments.",
+    "audience": "Producers, developers and technologists interested in music.",
+    "likes": "Musicians who also build software, AI-assisted music projects, opinions on technology in creative work."
+  },
+  {
+    "id": "dubai-neighbourhood-post",
+    "name": "Dubai Neighbourhood Post",
+    "type": "Hyperlocal community news",
+    "region": "Dubai",
+    "beat": "Local events, residents' stories and community happenings in Dubai neighbourhoods.",
+    "audience": "Dubai residents looking for things to do and local stories.",
+    "likes": "Local performers, free or community events, stories about people who live and work nearby."
+  },
+  {
+    "id": "levant-culture-desk",
+    "name": "Levant Culture Desk",
+    "type": "Regional culture desk",
+    "region": "Levant and diaspora",
+    "beat": "Culture, music and arts from Syria, Lebanon, Jordan and Palestine and their diasporas.",
+    "audience": "Readers connected to or interested in Levantine culture.",
+    "likes": "Artists from the Levant working abroad, keeping traditions alive, cultural bridges between countries."
+  }
+]
