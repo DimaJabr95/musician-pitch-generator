@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai.errors import APIError
 from pydantic import BaseModel, Field
+from rag import find_outlets
 
 app = FastAPI(title="Musician Pitch-Angle Generator")
 
@@ -66,6 +67,30 @@ Respond with ONLY valid JSON, no other text, in exactly this shape:
 """
 
 
+OUTLET_INSTRUCTIONS = """
+
+A list of best-matching outlets may be included after the bio, most relevant \
+first. If it is, write the pitch email for the FIRST outlet on the list: address \
+it to that outlet's editor by name, and make clear why the story fits what that \
+outlet covers. Do not invent facts about the outlet beyond what the list says. \
+The JSON shape stays exactly the same.
+"""
+
+
+def build_contents(bio: str, outlets: list[dict] | None) -> str:
+    """The user message: the bio, plus the matched outlets when there are any."""
+    if not outlets:
+        return bio
+    listing = "\n".join(
+        f"{i}. {o['name']} ({o['type']}, {o['region']}). Covers: {o['beat']}"
+        for i, o in enumerate(outlets, start=1)
+    )
+    return (
+        f"MUSICIAN BIO:\n{bio}\n\n"
+        f"BEST-MATCHING OUTLETS (most relevant first):\n{listing}"
+    )
+
+
 class PitchRequest(BaseModel):
     bio: str = Field(..., min_length=20, max_length=4000)
 
@@ -75,9 +100,18 @@ class EmailDraft(BaseModel):
     body: str
 
 
+class OutletMatch(BaseModel):
+    name: str
+    type: str
+    region: str
+    beat: str
+    score: float
+
+
 class PitchResponse(BaseModel):
     angles: list[str]
     email_draft: EmailDraft
+    outlets: list[OutletMatch] = []
 
 
 def _client() -> genai.Client:
@@ -94,7 +128,7 @@ def _client() -> genai.Client:
     )
 
 
-def call_gemini(bio: str) -> dict:
+def call_gemini(bio: str, outlets: list[dict] | None = None) -> dict:
     """Call the Gemini API and return the parsed JSON response.
 
     Pulled out as its own function so it's easy to mock in tests and to
@@ -104,9 +138,10 @@ def call_gemini(bio: str) -> dict:
     try:
         response = client.models.generate_content(
             model=MODEL,
-            contents=bio,
+            contents=build_contents(bio, outlets),
             config={
-                "system_instruction": SYSTEM_PROMPT,
+                "system_instruction": SYSTEM_PROMPT
+                + (OUTLET_INSTRUCTIONS if outlets else ""),
                 "response_mime_type": "application/json",
             },
         )
@@ -150,9 +185,12 @@ def call_gemini(bio: str) -> dict:
 
 @app.post("/generate-pitch", response_model=PitchResponse)
 def generate_pitch(request: PitchRequest) -> PitchResponse:
+    # Best-matching outlets from the vector database. Empty when matching is
+    # switched off or unavailable, in which case the pitch is written as before.
+    outlets = find_outlets(request.bio)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(call_gemini, request.bio)
+        future = executor.submit(call_gemini, request.bio, outlets)
         try:
             data = future.result(timeout=30)
         except concurrent.futures.TimeoutError:
@@ -170,7 +208,11 @@ def generate_pitch(request: PitchRequest) -> PitchResponse:
             detail="Gemini's response was missing expected fields.",
         )
 
-    return PitchResponse(**data)
+    return PitchResponse(
+        angles=data["angles"],
+        email_draft=data["email_draft"],
+        outlets=outlets,
+    )
 
 
 @app.get("/health")
