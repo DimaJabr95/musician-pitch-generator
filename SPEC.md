@@ -53,3 +53,13 @@ starting point for outreach to music journalists or local press.
 - Small, readable commit history (spec → backend → tests → frontend → polish)
 - One documented instance in the PR/commit history of catching and correcting something the
   AI got wrong (e.g. an inaccurate angle, a tone mismatch, a broken response shape)
+
+## Changes since this spec
+This file is the original v1 spec and is kept as written. What changed after it:
+- **Gemini instead of Claude.** The backend calls the Gemini API. See "A note on
+  process" in the README.
+- **Outlet matching (RAG).** The spec listed an outlet database as out of scope.
+  It is now a small optional feature: fictional sample outlets are embedded with
+  Gemini and stored in Qdrant, the bio is matched against them, and the draft is
+  written for the best match. The response gains an `outlets` list.
+- **Docker Compose, GitHub Actions CI and frontend tests** were added.
