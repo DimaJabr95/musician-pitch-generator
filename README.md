@@ -21,7 +21,7 @@ release, or performance update, in this repo's example.
 
 ## How it works
 
-![Architecture: browser, Next.js frontend, FastAPI backend, Qdrant vector database, Gemini API](docs/architecture.svg)
+![Architecture: browser, Next.js frontend, FastAPI backend, Qdrant vector database, Gemini API, ElevenLabs](docs/architecture.svg)
 
 1. You paste a bio (20 to 4000 characters) into the frontend.
 2. The frontend sends it to `POST /generate-pitch` on the backend.
@@ -31,13 +31,21 @@ release, or performance update, in this repo's example.
    written for the top-matching outlet (generation), validates the JSON it gets
    back, and returns the angles, draft and matched outlets.
 5. The frontend shows the angles, the best-fit outlets and a copyable draft.
+   A **Listen** button reads the draft aloud: the frontend calls `POST /speak`,
+   the backend gets MP3 audio from the ElevenLabs text-to-speech API and returns
+   it. The ElevenLabs key stays on the server, and audio already fetched for a
+   draft is reused so replaying it doesn't use more characters.
 
 The 12 outlets in `backend/outlets.json` are fictional sample data. They are
 embedded and stored in Qdrant on the first request, and re-indexed automatically
 if the file changes. If Qdrant or the embeddings API is unavailable, matching is
 skipped and the pitch is generated without outlets. The similarity scores are in
 the API response but not shown in the UI, because they rank outlets rather than
-measure how good a match is.
+measure how good a match is. Voice is optional too: without an ElevenLabs key
+the app works as before, and `/speak` explains that voice isn't set up.
+
+If the main Gemini model is overloaded (503), rate limited (429) or too slow, the
+backend automatically tries a fallback model before giving up.
 
 The backend also exposes `GET /health`, and FastAPI's interactive API docs are
 at http://localhost:8000/docs when it's running.
@@ -54,6 +62,9 @@ docker compose up --build
 
 Open http://localhost:3000, paste a bio, click **Find the angles**.
 Stop with `Ctrl+C`.
+
+To also turn on the **Listen** button, add an ElevenLabs API key to `.env` as
+`ELEVENLABS_API_KEY=`. It's optional, and the app works without it.
 
 The first request takes a few extra seconds while the outlets are embedded and
 stored. You can look at them in the Qdrant dashboard at
@@ -99,17 +110,22 @@ export QDRANT_URL=http://localhost:6333
 | `CORS_ORIGINS`        | backend  | Comma-separated allowed browser origins. Default: `http://localhost:3000` |
 | `QDRANT_URL`          | backend  | Optional. Turns on outlet matching. Set to `http://qdrant:6333` in `docker-compose.yml`; unset means matching is off. |
 | `EMBEDDING_MODEL`     | backend  | Optional. Gemini embedding model. Default: `gemini-embedding-001` |
+| `GEMINI_MODEL`        | backend  | Optional. Gemini model that writes the pitch. Default: `gemini-3.6-flash` |
+| `GEMINI_FALLBACK_MODEL` | backend | Optional. Model tried if the main one is overloaded, rate limited or slow. Default: `gemini-3.5-flash-lite` |
+| `ELEVENLABS_API_KEY`  | backend  | Optional. Turns on the Listen button. Without it, voice is off. |
+| `ELEVENLABS_VOICE_ID` | backend  | Optional. ElevenLabs voice. Default: a premade voice. |
+| `ELEVENLABS_MODEL_ID` | backend  | Optional. ElevenLabs model. Default: `eleven_flash_v2_5` |
 | `NEXT_PUBLIC_API_URL` | frontend | Backend URL. Baked in at build time. Default: `http://localhost:8000` |
 
 ## Tests
 
-Neither test suite needs an API key or a running Qdrant. The backend tests mock
+Neither test suite needs an API key, a running Qdrant or an ElevenLabs account. The backend tests mock
 the Gemini responses, run Qdrant in memory and use a small stand-in for the
 embeddings API. The frontend tests mock `fetch`.
 
 ```bash
-cd backend && pytest      # API validation, response shape, error handling, outlet matching
-cd frontend && npm test   # Jest + React Testing Library: rendering, input, API success/failure, outlets, copy button
+cd backend && pytest      # API validation, response shape, error handling, outlet matching, voice, model fallback
+cd frontend && npm test   # Jest + React Testing Library: rendering, input, API success/failure, outlets, copy and listen buttons
 ```
 
 ## Continuous integration
