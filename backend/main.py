@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai.errors import APIError
 from pydantic import BaseModel, Field
+from requests.exceptions import Timeout
 from rag import find_outlets
 from voice import VoiceNotConfigured, VoiceServiceError, synthesize
 
@@ -41,7 +42,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = "gemini-3.6-flash"
+# Model names. GEMINI_MODEL / GEMINI_FALLBACK_MODEL override them without a code
+# change. The fallback is tried when the main model is overloaded (503), rate
+# limited (429) or too slow to answer.
+MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.6-flash"
+FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL") or "gemini-3.5-flash-lite"
+
+# Per-attempt limits in milliseconds. With a fallback, each attempt gets a
+# shorter limit so both can finish inside the endpoint's 30 second budget.
+ATTEMPT_TIMEOUT_MS = 12_000
+SOLO_TIMEOUT_MS = 30_000
 
 SYSTEM_PROMPT = """You are a music PR assistant. Given a short bio or update about a \
 musician, do two things:
@@ -120,7 +130,7 @@ class PitchResponse(BaseModel):
     outlets: list[OutletMatch] = []
 
 
-def _client() -> genai.Client:
+def _client(timeout_ms: int = SOLO_TIMEOUT_MS) -> genai.Client:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -130,46 +140,75 @@ def _client() -> genai.Client:
   
     return genai.Client(
         api_key=api_key,
-        http_options={"timeout": 30_000},  # milliseconds
+        http_options={"timeout": timeout_ms},  # milliseconds
+    )
+
+
+def _gemini_error(status: int | None) -> HTTPException:
+    """The friendly error the browser sees when Gemini fails."""
+    if status == 503:
+        return HTTPException(
+            status_code=502,
+            detail=(
+                "The AI service is under heavy load right now. "
+                "Please wait a moment and try again."
+            ),
+        )
+    if status == 429:
+        return HTTPException(
+            status_code=502,
+            detail="Too many requests right now. Please wait a moment and try again.",
+        )
+    if status == 504:
+        return HTTPException(
+            status_code=504,
+            detail="The AI service took too long to respond. Please try again.",
+        )
+    return HTTPException(
+        status_code=502,
+        detail="Something went wrong generating your pitch. Please try again.",
     )
 
 
 def call_gemini(bio: str, outlets: list[dict] | None = None) -> dict:
     """Call the Gemini API and return the parsed JSON response.
 
+    If the main model is overloaded (503), rate limited (429) or too slow, the
+    fallback model is tried before giving up.
+
     Pulled out as its own function so it's easy to mock in tests and to
     reuse if we add retries/logging later.
     """
-    client = _client()
-    try:
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=build_contents(bio, outlets),
-            config={
-                "system_instruction": SYSTEM_PROMPT
-                + (OUTLET_INSTRUCTIONS if outlets else ""),
-                "response_mime_type": "application/json",
-            },
-        )
-    except APIError as exc:
-    
-        print(f"[call_gemini] Gemini API error: {exc}")
+    models = [MODEL]
+    if FALLBACK_MODEL and FALLBACK_MODEL != MODEL:
+        models.append(FALLBACK_MODEL)
+    client = _client(
+        timeout_ms=ATTEMPT_TIMEOUT_MS if len(models) > 1 else SOLO_TIMEOUT_MS
+    )
 
-        status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
-        if status == 503:
-            user_message = (
-                "The AI service is under heavy load right now. "
-                "Please wait a moment and try again."
+    response = None
+    for i, model in enumerate(models):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=build_contents(bio, outlets),
+                config={
+                    "system_instruction": SYSTEM_PROMPT
+                    + (OUTLET_INSTRUCTIONS if outlets else ""),
+                    "response_mime_type": "application/json",
+                },
             )
-        elif status == 429:
-            user_message = (
-                "Too many requests right now. Please wait a moment and try again."
-            )
-        else:
-            user_message = (
-                "Something went wrong generating your pitch. Please try again."
-            )
-        raise HTTPException(status_code=502, detail=user_message)
+            break
+        except (APIError, Timeout) as exc:
+            print(f"[call_gemini] Gemini error on {model}: {exc}")
+            if isinstance(exc, Timeout):
+                status = 504
+            else:
+                status = getattr(exc, "code", None) or getattr(exc, "status_code", None)
+            if status in (503, 429, 504) and i < len(models) - 1:
+                print(f"[call_gemini] Trying fallback model {models[i + 1]}")
+                continue
+            raise _gemini_error(status)
 
     raw_text = response.text
 
