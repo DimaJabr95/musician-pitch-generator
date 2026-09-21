@@ -16,12 +16,13 @@ import concurrent.futures
 import json
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai.errors import APIError
 from pydantic import BaseModel, Field
 from rag import find_outlets
+from voice import VoiceNotConfigured, VoiceServiceError, synthesize
 
 app = FastAPI(title="Musician Pitch-Angle Generator")
 
@@ -93,6 +94,11 @@ def build_contents(bio: str, outlets: list[dict] | None) -> str:
 
 class PitchRequest(BaseModel):
     bio: str = Field(..., min_length=20, max_length=4000)
+
+
+class SpeakRequest(BaseModel):
+    # Capped so a single request can't use up the text-to-speech quota.
+    text: str = Field(..., min_length=1, max_length=2500)
 
 
 class EmailDraft(BaseModel):
@@ -213,6 +219,21 @@ def generate_pitch(request: PitchRequest) -> PitchResponse:
         email_draft=data["email_draft"],
         outlets=outlets,
     )
+
+
+@app.post("/speak")
+def speak(request: SpeakRequest) -> Response:
+    """Read text aloud (used for the drafted pitch). Returns MP3 audio."""
+    try:
+        audio = synthesize(request.text)
+    except VoiceNotConfigured:
+        raise HTTPException(
+            status_code=503,
+            detail="Voice isn't set up on this server (ELEVENLABS_API_KEY is missing).",
+        )
+    except VoiceServiceError as exc:
+        raise HTTPException(status_code=502, detail=exc.user_message)
+    return Response(content=audio, media_type="audio/mpeg")
 
 
 @app.get("/health")
