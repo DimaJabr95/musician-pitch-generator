@@ -1,6 +1,6 @@
 "use client";
 
-import { SyntheticEvent, useState } from "react";
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
 
 type EmailDraft = {
   subject: string;
@@ -40,6 +40,23 @@ function CheckIcon() {
   );
 }
 
+function SpeakerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M4 9.5v5h4l5 4v-13l-5 4H4z" />
+      <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [bio, setBio] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "done">(
@@ -48,12 +65,32 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState<PitchResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [voiceState, setVoiceState] = useState<"idle" | "loading" | "playing">(
+    "idle",
+  );
+  const [voiceError, setVoiceError] = useState("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // The last audio we fetched, so replaying the same draft doesn't spend
+  // text-to-speech characters again.
+  const audioCacheRef = useRef<{ text: string; url: string } | null>(null);
+
+  // Stop playback and free the audio when leaving the page.
+  useEffect(() => {
+    const audio = audioRef;
+    const cache = audioCacheRef;
+    return () => {
+      audio.current?.pause();
+      if (cache.current) URL.revokeObjectURL(cache.current.url);
+    };
+  }, []);
 
   async function handleSubmit(event: SyntheticEvent) {
     event.preventDefault();
     setStatus("loading");
     setErrorMessage("");
     setCopied(false);
+    stopAudio();
+    setVoiceError("");
 
     try {
       const response = await fetch(`${API_URL}/generate-pitch`, {
@@ -75,6 +112,67 @@ export default function Home() {
         err instanceof Error ? err.message : "Something went wrong.",
       );
       setStatus("error");
+    }
+  }
+
+  function stopAudio() {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setVoiceState("idle");
+  }
+
+  async function handleListen() {
+    if (!result) return;
+    if (voiceState === "playing") {
+      stopAudio();
+      return;
+    }
+    if (voiceState === "loading") return;
+
+    const text = `${result.email_draft.subject}.\n\n${result.email_draft.body}`.slice(0, 2500);
+    setVoiceError("");
+
+    try {
+      let url: string;
+      if (audioCacheRef.current?.text === text) {
+        url = audioCacheRef.current.url;
+      } else {
+        setVoiceState("loading");
+        const response = await fetch(`${API_URL}/speak`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.detail ?? "Couldn't generate the audio.");
+        }
+        const blob = await response.blob();
+        if (audioCacheRef.current) URL.revokeObjectURL(audioCacheRef.current.url);
+        url = URL.createObjectURL(blob);
+        audioCacheRef.current = { text, url };
+      }
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        audioRef.current = null;
+        setVoiceState("idle");
+      };
+      await audio.play();
+      setVoiceState("playing");
+    } catch (err) {
+      audioRef.current = null;
+      setVoiceState("idle");
+      if (err instanceof Error && err.name === "NotAllowedError") {
+        // Some browsers block audio that starts after a network request.
+        // The audio is already loaded, so a second click plays it straight away.
+        setVoiceError("Your browser blocked the audio. Click Listen again to play it.");
+      } else {
+        setVoiceError(
+          err instanceof Error ? err.message : "Couldn't play the audio.",
+        );
+      }
     }
   }
 
@@ -252,16 +350,36 @@ export default function Home() {
                   <span style={{ color: "var(--brass-soft)" }}>Subject: </span>
                   {result.email_draft.subject}
                 </p>
-                <button
-                  onClick={handleCopy}
-                  className="flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs transition-colors"
-                  style={{
-                    color: copied ? "var(--brass-soft)" : "var(--paper-dim)",
-                  }}
-                >
-                  {copied ? <CheckIcon /> : <CopyIcon />}
-                  {copied ? "Copied" : "Copy"}
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={handleListen}
+                    disabled={voiceState === "loading"}
+                    className="flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs transition-colors disabled:opacity-60"
+                    style={{
+                      color:
+                        voiceState === "playing"
+                          ? "var(--brass-soft)"
+                          : "var(--paper-dim)",
+                    }}
+                  >
+                    {voiceState === "playing" ? <StopIcon /> : <SpeakerIcon />}
+                    {voiceState === "loading"
+                      ? "Loading…"
+                      : voiceState === "playing"
+                        ? "Stop"
+                        : "Listen"}
+                  </button>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs transition-colors"
+                    style={{
+                      color: copied ? "var(--brass-soft)" : "var(--paper-dim)",
+                    }}
+                  >
+                    {copied ? <CheckIcon /> : <CopyIcon />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
               <div className="px-5 py-5" style={{ background: "var(--ink-soft)" }}>
                 <p className="whitespace-pre-wrap text-[15px] leading-relaxed">
@@ -272,6 +390,14 @@ export default function Home() {
             <p className="mt-3 text-sm" style={{ color: "var(--paper-dim)" }}>
               Review before sending — this is a starting draft, not a final one.
             </p>
+            {voiceError && (
+              <p
+                className="mt-3 border-l-2 pl-4 text-sm"
+                style={{ borderColor: "#b85c5c", color: "#e0a5a5" }}
+              >
+                {voiceError}
+              </p>
+            )}
           </div>
         </section>
       )}

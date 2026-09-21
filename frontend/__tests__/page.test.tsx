@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "../app/page";
 
@@ -154,4 +154,112 @@ test("hides the outlets section when the API returns no outlets", async () => {
   expect(
     screen.queryByRole("heading", { name: /best-fit outlets/i }),
   ).not.toBeInTheDocument();
+});
+
+// ---- Listen (text-to-speech) button ----
+
+function setUpAudio(playImpl?: () => Promise<void>) {
+  const audio = {
+    play: jest.fn(playImpl ?? (() => Promise.resolve())),
+    pause: jest.fn(),
+    onended: null as null | (() => void),
+  };
+  global.Audio = jest.fn(() => audio) as unknown as typeof Audio;
+  global.URL.createObjectURL = jest.fn(() => "blob:fake-audio");
+  global.URL.revokeObjectURL = jest.fn();
+  return audio;
+}
+
+function mockApi(speak: Partial<Response>) {
+  const fetchMock = jest.fn<Promise<Partial<Response>>, [string, RequestInit?]>(
+    (url) =>
+      Promise.resolve(
+        url.endsWith("/speak")
+          ? speak
+          : { ok: true, json: async () => MOCK_RESULT },
+      ),
+  );
+  global.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+}
+
+const AUDIO_OK = { ok: true, blob: async () => new Blob(["mp3"]) };
+
+async function showResults(user: ReturnType<typeof userEvent.setup>) {
+  render(<Home />);
+  await user.type(screen.getByRole("textbox"), LONG_BIO);
+  await user.click(screen.getByRole("button", { name: /find the angles/i }));
+  await screen.findByText(MOCK_RESULT.angles[0]);
+}
+
+test("Listen sends the draft to /speak, plays it, and offers Stop", async () => {
+  const audio = setUpAudio();
+  const fetchMock = mockApi(AUDIO_OK);
+  const user = userEvent.setup();
+  await showResults(user);
+
+  await user.click(screen.getByRole("button", { name: /listen/i }));
+
+  expect(await screen.findByRole("button", { name: /stop/i })).toBeInTheDocument();
+  expect(audio.play).toHaveBeenCalledTimes(1);
+  const speakCall = fetchMock.mock.calls.find(([url]) => url.endsWith("/speak"))!;
+  const sentText = JSON.parse(speakCall[1]?.body as string).text;
+  expect(sentText).toContain(MOCK_RESULT.email_draft.subject);
+  expect(sentText).toContain(MOCK_RESULT.email_draft.body);
+});
+
+test("Stop pauses the audio", async () => {
+  const audio = setUpAudio();
+  mockApi(AUDIO_OK);
+  const user = userEvent.setup();
+  await showResults(user);
+
+  await user.click(screen.getByRole("button", { name: /listen/i }));
+  await user.click(await screen.findByRole("button", { name: /stop/i }));
+
+  expect(audio.pause).toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: /listen/i })).toBeInTheDocument();
+});
+
+test("replaying the same draft reuses the audio instead of asking again", async () => {
+  const audio = setUpAudio();
+  const fetchMock = mockApi(AUDIO_OK);
+  const user = userEvent.setup();
+  await showResults(user);
+
+  await user.click(screen.getByRole("button", { name: /listen/i }));
+  await screen.findByRole("button", { name: /stop/i });
+  act(() => audio.onended?.()); // playback finishes
+  await user.click(await screen.findByRole("button", { name: /listen/i }));
+
+  await waitFor(() => expect(audio.play).toHaveBeenCalledTimes(2));
+  const speakCalls = fetchMock.mock.calls.filter(([url]) => url.endsWith("/speak"));
+  expect(speakCalls).toHaveLength(1);
+});
+
+test("shows the API's message when the voice isn't available", async () => {
+  setUpAudio();
+  mockApi({
+    ok: false,
+    json: async () => ({ detail: "Voice isn't set up on this server." }),
+  });
+  const user = userEvent.setup();
+  await showResults(user);
+
+  await user.click(screen.getByRole("button", { name: /listen/i }));
+
+  expect(await screen.findByText(/voice isn't set up/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /listen/i })).toBeEnabled();
+});
+
+test("asks the user to click again if the browser blocks autoplay", async () => {
+  const blocked = Object.assign(new Error("blocked"), { name: "NotAllowedError" });
+  setUpAudio(() => Promise.reject(blocked));
+  mockApi(AUDIO_OK);
+  const user = userEvent.setup();
+  await showResults(user);
+
+  await user.click(screen.getByRole("button", { name: /listen/i }));
+
+  expect(await screen.findByText(/click listen again/i)).toBeInTheDocument();
 });
